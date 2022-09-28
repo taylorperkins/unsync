@@ -57,6 +57,20 @@ class FutureTests(TestCase):
         res = source().then(continuation)
         self.assertEqual('faffderp', res.result())
 
+    def test_async_continuation_parameters(self):
+        @unsync
+        async def continuation(result, *args, **kwargs):
+            await asyncio.sleep(0.1)
+            return result + 'derp' + "".join(args) + "".join(k+v for k, v in kwargs.items())
+
+        @unsync
+        async def source():
+            await asyncio.sleep(0.1)
+            return 'faff'
+
+        res = source().then(continuation, "foo", bar="baz")
+        self.assertEqual('faffderpfoobarbaz', res.result())
+
     def test_sync_continuation(self):
         def continuation(result):
             return result + 'derp'
@@ -68,6 +82,18 @@ class FutureTests(TestCase):
 
         res = source().then(continuation)
         self.assertEqual('faffderp', res.result())
+
+    def test_sync_continuation_parameters(self):
+        def continuation(result, *args, **kwargs):
+            return result + 'derp' + "".join(args) + "".join(k+v for k, v in kwargs.items())
+
+        @unsync
+        async def source():
+            await asyncio.sleep(0.1)
+            return 'faff'
+
+        res = source().then(continuation, "foo", bar="baz")
+        self.assertEqual('faffderpfoobarbaz', res.result())
 
     def test_chained_continuation(self):
         def cont_gen(text):
@@ -83,6 +109,21 @@ class FutureTests(TestCase):
 
         res = source().then(cont_gen('a')).then(cont_gen('b')).then(cont_gen('c'))
         self.assertEqual('faffabc', res.result())
+
+    def test_chained_continuation_parameters(self):
+        def cont_gen(text, multiplier: int = 1):
+            def continuation(result):
+                return result + text*multiplier
+
+            return continuation
+
+        @unsync
+        async def source():
+            await asyncio.sleep(0.1)
+            return 'faff'
+
+        res = source().then(cont_gen('a')).then(cont_gen('b', 2)).then(cont_gen('c', 3))
+        self.assertEqual('faffabbccc', res.result())
 
     def test_from_result(self):
         future = Unfuture.from_value('faff')

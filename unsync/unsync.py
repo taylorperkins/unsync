@@ -149,9 +149,9 @@ class Unfuture(Generic[T]):
         return self.future._loop.call_soon_threadsafe(lambda: self.future.set_result(value))
 
     @unsync
-    async def then(self, continuation):
+    async def then(self, continuation, *args, **kwargs):
         await self
-        result = continuation(self.result())
+        result = continuation(self.result(), *args, **kwargs)
         if hasattr(result, '__await__'):
             return await result
         return result
